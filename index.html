@@ -19,8 +19,10 @@
     --accent-ink:#241705;
     --ok:#57b37a;
     --ok-ink:#08210f;
-    --warn:#e0703f;
-    --warn-ink:#2a0e02;
+    --warn:#d64545;
+    --warn-ink:#2a0000;
+    --occupied:var(--accent);
+    --occupied-ink:var(--accent-ink);
     --display: 'Space Grotesk', system-ui, sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
     --radius: 10px;
@@ -148,6 +150,8 @@
   .status-btn.ok.selected .dot{background:var(--ok-ink);}
   .status-btn.warn.selected{background:var(--warn);border-color:var(--warn);color:var(--warn-ink);}
   .status-btn.warn.selected .dot{background:var(--warn-ink);}
+  .status-btn.occupied.selected{background:var(--occupied);border-color:var(--occupied);color:var(--occupied-ink);}
+  .status-btn.occupied.selected .dot{background:var(--occupied-ink);}
   .status-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 
   textarea.note{
@@ -397,7 +401,7 @@
 
   const state = {
     date: todayKey(),
-    checkins: {},   // { roomId: {status:'ok'|'warn', note:'', time:'HH:MM'} }
+    checkins: {},   // { roomId: {status:'ok'|'occupied'|'warn', note:'', time:'HH:MM'} }
     activeFloor: FLOORS[0],
     loading: true,
   };
@@ -517,12 +521,18 @@
     okBtn.innerHTML = '<span class="dot"></span> Tudo certo';
     okBtn.addEventListener('click', ()=> toggleStatus(room.id, 'ok'));
 
+    const occupiedBtn = document.createElement('button');
+    occupiedBtn.className = 'status-btn occupied' + (entry.status === 'occupied' ? ' selected' : '');
+    occupiedBtn.innerHTML = '<span class="dot"></span> Sala Ocupada';
+    occupiedBtn.addEventListener('click', ()=> toggleStatus(room.id, 'occupied'));
+
     const warnBtn = document.createElement('button');
     warnBtn.className = 'status-btn warn' + (entry.status === 'warn' ? ' selected' : '');
     warnBtn.innerHTML = '<span class="dot"></span> Cabos desorganizados';
     warnBtn.addEventListener('click', ()=> toggleStatus(room.id, 'warn'));
 
     statusRow.appendChild(okBtn);
+    statusRow.appendChild(occupiedBtn);
     statusRow.appendChild(warnBtn);
     card.appendChild(statusRow);
 
@@ -585,9 +595,11 @@
         checked++;
         if(e.status === 'ok'){
           lines.push(`  [✅] ${room.name} – tudo certo (${e.time || '--:--'})`);
+        } else if(e.status === 'occupied'){
+          lines.push(`  [🟡] ${room.name} – sala ocupada durante a verificação (${e.time || '--:--'})`);
         } else {
           problems++;
-          lines.push(`  [⚠️] ${room.name} – cabos desorganizados (${e.time || '--:--'})`);
+          lines.push(`  [🔌❌] ${room.name} – cabos desorganizados (${e.time || '--:--'})`);
         }
         if(e.note && e.note.trim()){
           lines.push(`       obs: ${e.note.trim()}`);

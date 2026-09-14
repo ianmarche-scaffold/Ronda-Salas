@@ -5,7 +5,7 @@ Checklist diário de verificação das salas de reunião do escritório, com rel
 ## Funcionalidades
 
 - Salas organizadas por andar (cada andar = um continente, seguindo os nomes das cidades)
-- Duas opções de status por sala: **Tudo certo** ✅ ou **Cabos desorganizados** ⚠️
+- Três opções de status por sala, em ordem de severidade: **Tudo certo** ✅ / **Sala ocupada** 🟡 / **Cabos desorganizados** 🔌❌
 - Campo de observação opcional para detalhar problemas fora do padrão
 - Horário registrado automaticamente ao marcar uma sala
 - Histórico dos últimos 7 dias
