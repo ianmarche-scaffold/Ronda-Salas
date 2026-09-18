@@ -30,7 +30,7 @@ Checklist diário de verificação das salas de reunião do escritório, com rel
 
 ## Tecnologia
 
-HTML, CSS e JavaScript puro, sem frameworks nem build. Os dados ficam salvos no `localStorage` do navegador — ou seja, apenas no dispositivo/navegador usado para a ronda (não sincroniza entre aparelhos).
+HTML, CSS e JavaScript puro, sem frameworks nem build. O código está separado em três arquivos: `index.html` (estrutura), `style.css` (estilos) e `app.js` (lógica). Os dados ficam salvos no `localStorage` do navegador, ou seja, apenas no dispositivo/navegador usado para a ronda (não sincroniza entre aparelhos).
 
 ## Licença
 
