@@ -10,6 +10,7 @@ Checklist diário de verificação das salas de reunião do escritório, com rel
 - Horário registrado automaticamente ao marcar uma sala
 - Histórico dos últimos 7 dias
 - Relatório com um clique para copiar e colar no WhatsApp
+- **Envio direto para WhatsApp e Discord a partir do relatório**
 - Sem instalação — funciona direto no navegador do celular (pode ser adicionado à tela inicial)
 
 ## Salas
@@ -25,8 +26,20 @@ Checklist diário de verificação das salas de reunião do escritório, com rel
 
 1. Abra o link do site no navegador do celular.
 2. Toque na aba do andar e marque o status de cada sala conforme for passando.
-3. Ao final da ronda, toque em **Relatório**, revise o texto e toque em **Copiar relatório**.
-4. Cole no WhatsApp para o Head de Infraestrutura.
+3. Ao final da ronda, toque em **Relatório**, revise o texto e toque em **Copiar relatório** — ou envie direto pelo botão **WhatsApp** ou **Discord**.
+4. Cole no WhatsApp para o Head de Infraestrutura (ou use o envio direto).
+
+## Configuração
+
+### Webhook do Discord
+
+O botão **Enviar no Discord** usa uma Webhook URL que você mesmo configura:
+
+1. Toque no ⚙️ **ícone de engrenagem** no cabeçalho do app.
+2. Cole a URL do Webhook do seu canal do Discord (obtida em _Configurações do servidor → Integçraões → Webhooks_).
+3. Clique em **Salvar**. A URL fica salva **somente no `localStorage` deste navegador** — ela nunca é enviada a nenhum servidor nem deve ser adicionada ao código-fonte (o repositório é público).
+
+> **Segurança:** nunca cole a Webhook URL diretamente no código. Qualquer pessoa com acesso ao webhook pode enviar mensagens ao seu canal.
 
 ## Tecnologia
 

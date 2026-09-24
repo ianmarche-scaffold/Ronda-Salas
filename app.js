@@ -194,6 +194,13 @@
   }
 
   // ---------- report ----------
+  // Use fromCodePoint so the icons are encoding-agnostic (no literal emoji in source).
+  const STATUS_ICONS = {
+    ok:       String.fromCodePoint(0x2705),          // U+2705  checkmark box
+    occupied: String.fromCodePoint(0x1F7E1),          // U+1F7E1 yellow circle
+    warn:     String.fromCodePoint(0x1F50C, 0x274C), // U+1F50C + U+274C plug + cross
+  };
+
   function buildReportText(dateStr, checkins){
     const dt = new Date(dateStr+'T12:00:00');
     const dateLabel = dt.toLocaleDateString('pt-BR');
@@ -213,12 +220,12 @@
         }
         checked++;
         if(e.status === 'ok'){
-          lines.push(`  [✅] ${room.name} – tudo certo (${e.time || '--:--'})`);
+          lines.push(`  [${STATUS_ICONS.ok}] ${room.name} – tudo certo (${e.time || '--:--'})`);
         } else if(e.status === 'occupied'){
-          lines.push(`  [🟡] ${room.name} – sala ocupada durante a verificação (${e.time || '--:--'})`);
+          lines.push(`  [${STATUS_ICONS.occupied}] ${room.name} – sala ocupada durante a verificação (${e.time || '--:--'})`);
         } else {
           problems++;
-          lines.push(`  [🔌❌] ${room.name} – cabos desorganizados (${e.time || '--:--'})`);
+          lines.push(`  [${STATUS_ICONS.warn}] ${room.name} – cabos desorganizados (${e.time || '--:--'})`);
         }
         if(e.note && e.note.trim()){
           lines.push(`       obs: ${e.note.trim()}`);
@@ -291,6 +298,67 @@
     }
   }
 
+  // ---------- WhatsApp share ----------
+  function sendWhatsapp(){
+    const text = document.getElementById('reportText').textContent;
+    const url = 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(url, '_blank');
+  }
+
+  // ---------- Discord webhook ----------
+  const DISCORD_KEY = 'discordWebhookUrl';
+  const DISCORD_LIMIT = 1900;
+  const DISCORD_OVERFLOW_MSG = '\n\n(relatório completo disponível no botão Copiar)';
+
+  async function sendDiscord(){
+    const webhookUrl = localStorage.getItem(DISCORD_KEY) || '';
+    if(!webhookUrl.trim()){
+      openWebhookModal();
+      return;
+    }
+    let text = document.getElementById('reportText').textContent;
+    if(text.length > DISCORD_LIMIT){
+      text = text.slice(0, DISCORD_LIMIT - DISCORD_OVERFLOW_MSG.length) + DISCORD_OVERFLOW_MSG;
+    }
+    try{
+      const res = await fetch(webhookUrl, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({content: text})
+      });
+      if(res.ok || res.status === 204){
+        showToast('Enviado ao Discord!');
+      } else {
+        showToast('Erro ao enviar (' + res.status + '). Verifique a Webhook URL.');
+      }
+    }catch(err){
+      showToast('Falha de rede ao enviar ao Discord.');
+    }
+  }
+
+  // ---------- Webhook config modal ----------
+  function openWebhookModal(){
+    const saved = localStorage.getItem(DISCORD_KEY) || '';
+    document.getElementById('webhookInput').value = saved;
+    document.getElementById('webhookOverlay').classList.add('open');
+    setTimeout(()=>document.getElementById('webhookInput').focus(), 80);
+  }
+
+  function closeWebhookModal(){
+    document.getElementById('webhookOverlay').classList.remove('open');
+  }
+
+  function saveWebhook(){
+    const val = document.getElementById('webhookInput').value.trim();
+    if(!val){
+      showToast('Cole a URL do webhook antes de salvar.');
+      return;
+    }
+    localStorage.setItem(DISCORD_KEY, val);
+    closeWebhookModal();
+    showToast('Webhook salvo!');
+  }
+
   // ---------- toast ----------
   let toastTimer = null;
   function showToast(msg){
@@ -314,8 +382,21 @@
     document.getElementById('closeReportBtn').addEventListener('click', closeReport);
     document.getElementById('closeReportBtn2').addEventListener('click', closeReport);
     document.getElementById('copyReportBtn').addEventListener('click', copyReport);
+    document.getElementById('sendWhatsappBtn').addEventListener('click', sendWhatsapp);
+    document.getElementById('sendDiscordBtn').addEventListener('click', sendDiscord);
     document.getElementById('modalOverlay').addEventListener('click', (ev)=>{
       if(ev.target.id === 'modalOverlay') closeReport();
+    });
+    // Webhook modal
+    document.getElementById('openWebhookBtn').addEventListener('click', openWebhookModal);
+    document.getElementById('closeWebhookBtn').addEventListener('click', closeWebhookModal);
+    document.getElementById('closeWebhookBtn2').addEventListener('click', closeWebhookModal);
+    document.getElementById('saveWebhookBtn').addEventListener('click', saveWebhook);
+    document.getElementById('webhookOverlay').addEventListener('click', (ev)=>{
+      if(ev.target.id === 'webhookOverlay') closeWebhookModal();
+    });
+    document.getElementById('webhookInput').addEventListener('keydown', (ev)=>{
+      if(ev.key === 'Enter') saveWebhook();
     });
   }
 
