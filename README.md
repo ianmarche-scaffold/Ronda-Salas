@@ -11,7 +11,8 @@ Checklist diário de verificação das salas de reunião do escritório, com rel
 - Histórico dos últimos 7 dias
 - Relatório com um clique para copiar e colar no WhatsApp
 - **Envio direto para WhatsApp e Discord a partir do relatório**
-- Sem instalação — funciona direto no navegador do celular (pode ser adicionado à tela inicial)
+- **Instalável como app (PWA)**, com suporte offline básico
+- Sem instalação obrigatória — também funciona direto no navegador do celular
 
 ## Salas
 
@@ -28,6 +29,8 @@ Checklist diário de verificação das salas de reunião do escritório, com rel
 2. Toque na aba do andar e marque o status de cada sala conforme for passando.
 3. Ao final da ronda, toque em **Relatório**, revise o texto e toque em **Copiar relatório** — ou envie direto pelo botão **WhatsApp** ou **Discord**.
 4. Cole no WhatsApp para o Head de Infraestrutura (ou use o envio direto).
+
+> **Instalar como app:** no Android/Chrome, o aviso de instalação pode não aparecer automaticamente; nesse caso, use o menu ⋮ → "Instalar app" / "Adicionar à tela inicial". No iOS/Safari, use _Compartilhar_ (ícone ⬆️) → _Adicionar à Tela de Início_. Após instalado, o app funciona offline (as páginas são carregadas do cache quando não houver rede).
 
 ## Configuração
 
