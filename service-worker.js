@@ -2,7 +2,7 @@
 // Estratégia: network-first para arquivos do app (atualização imediata a cada deploy),
 //             cache-first para ícones estáticos.
 
-const CACHE_NAME = 'ronda-salas-v2';
+const CACHE_NAME = 'ronda-salas-v3';
 
 // Arquivos do app – network-first (tenta rede, fallback p/ cache)
 const APP_ASSETS = [
@@ -10,6 +10,8 @@ const APP_ASSETS = [
   './index.html',
   './style.css',
   './app.js',
+  './firebase-config.js',
+  './vendor/firebase-bundle.js',
   './manifest.json',
 ];
 

@@ -23,7 +23,16 @@
     checkins: {},   // { roomId: {status:'ok'|'occupied'|'warn', note:'', time:'HH:MM'} }
     activeFloor: FLOORS[0],
     loading: true,
+    user: null,
   };
+
+  const firebase = window.RondaFirebase;
+  let auth = null;
+  let db = null;
+  let googleProvider = null;
+  let sessionVersion = 0;
+  let refreshVersion = 0;
+  let editVersion = 0;
 
   function todayKey(d){
     const dt = d || new Date();
@@ -48,35 +57,195 @@
     return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   }
 
-  // ---------- storage (localStorage do navegador) ----------
+  // ---------- storage (Firestore com cache offline do SDK) ----------
   async function loadDay(dateStr){
+    if(!state.user || !db) return {};
+    const session = sessionVersion;
     try{
-      const raw = localStorage.getItem('day:'+dateStr);
-      return raw ? JSON.parse(raw) : {};
+      const snapshot = await firebase.getDoc(firebase.doc(db, 'rondas', dateStr));
+      if(session !== sessionVersion) return {};
+      return snapshot.exists() ? (snapshot.data().rooms || {}) : {};
     }catch(e){
-      return {};
+      if(session !== sessionVersion) return {};
+      showToast('Não foi possível carregar a ronda. Verifique sua conexão e seu acesso.');
+      return dateStr === state.date ? state.checkins : {};
     }
   }
 
-  async function saveDay(dateStr, data){
+  async function saveDay(dateStr, roomId, entry){
+    if(!state.user || !db) return;
+    const session = sessionVersion;
+    editVersion++;
     try{
-      localStorage.setItem('day:'+dateStr, JSON.stringify(data));
+      // A UI continua disponível enquanto o SDK aguarda a sincronização offline.
+      await firebase.setDoc(firebase.doc(db, 'rondas', dateStr), {
+        rooms: { [roomId]: { ...entry } },
+        updatedAt: firebase.serverTimestamp(),
+      }, { merge: true });
     }catch(e){
-      showToast('Não foi possível salvar (armazenamento do navegador indisponível).');
+      if(session === sessionVersion){
+        showToast('Não foi possível salvar a sala. Verifique sua conexão e seu acesso.');
+      }
     }
   }
 
   async function listRecentDays(){
+    if(!state.user || !db) return [state.date];
+    const session = sessionVersion;
     try{
-      const days = Object.keys(localStorage)
-        .filter(k => k.startsWith('day:'))
-        .map(k => k.replace('day:',''))
-        .sort().reverse();
+      const recentDays = firebase.query(
+        firebase.collection(db, 'rondas'),
+        firebase.orderBy(firebase.documentId(), 'desc'),
+        firebase.limit(7)
+      );
+      const snapshot = await firebase.getDocs(recentDays);
+      if(session !== sessionVersion) return [state.date];
+      const days = snapshot.docs.map(day => day.id);
       const set = new Set(days);
       set.add(state.date);
       return Array.from(set).sort().reverse().slice(0,7);
     }catch(e){
+      if(session === sessionVersion){
+        showToast('Não foi possível carregar o histórico. Verifique sua conexão e seu acesso.');
+      }
       return [state.date];
+    }
+  }
+
+  async function refreshDay(){
+    if(!state.user || !db) return;
+    const session = sessionVersion;
+    const refresh = ++refreshVersion;
+    const edits = editVersion;
+    const date = todayKey();
+    const checkins = await loadDay(date);
+    // Leituras antigas não devem substituir uma nova sessão ou uma edição local.
+    if(session !== sessionVersion || refresh !== refreshVersion || edits !== editVersion) return;
+    state.date = date;
+    state.checkins = checkins;
+    document.getElementById('headerDate').textContent = formatHeaderDate(state.date);
+    renderRooms();
+    if(document.getElementById('modalOverlay').classList.contains('open')){
+      await showReportFor(currentReportDate || state.date);
+    }
+  }
+
+  // ---------- Google Auth ----------
+  function showLogin(){
+    state.user = null;
+    state.checkins = {};
+    state.loading = true;
+    document.getElementById('appContent').inert = true;
+    document.getElementById('loginOverlay').classList.add('open');
+    document.getElementById('accountEmail').textContent = '';
+    document.getElementById('roomList').innerHTML = '';
+    document.getElementById('reportText').textContent = '';
+    document.getElementById('headerSub').textContent = 'entre para iniciar a ronda';
+    closeReport();
+    closeWebhookModal();
+    renderProgress();
+  }
+
+  async function handleAuthStateChanged(user){
+    const session = ++sessionVersion;
+    refreshVersion++;
+    showLogin();
+    if(!user) return;
+    if(!(user.email || '').toLowerCase().endsWith('@scaffoldeducation.com.br')){
+      try{
+        await firebase.signOut(auth);
+      }catch(e){
+        showToast('Não foi possível encerrar a sessão. Tente entrar novamente.');
+        return;
+      }
+      showToast('Use uma conta @scaffoldeducation.com.br para entrar.');
+      return;
+    }
+    state.user = user;
+    document.getElementById('accountEmail').textContent = user.email;
+    document.getElementById('headerSub').textContent = 'carregando…';
+    await refreshDay();
+    if(session !== sessionVersion) return;
+    state.loading = false;
+    document.getElementById('appContent').inert = false;
+    document.getElementById('loginOverlay').classList.remove('open');
+    document.getElementById('headerSub').textContent = 'toque numa sala para registrar a verificação';
+    document.getElementById('openReportBtn').focus();
+  }
+
+  function showAuthError(error){
+    const messages = {
+      'auth/popup-blocked': 'O navegador bloqueou a janela de login. Permita pop-ups para este site.',
+      'auth/popup-closed-by-user': 'A janela de login foi fechada. Tente novamente quando quiser.',
+      'auth/network-request-failed': 'Falha de rede ao entrar. Verifique sua conexão e tente novamente.',
+      'auth/unauthorized-domain': 'Este endereço ainda não foi autorizado para login. Avise o responsável pelo app.',
+    };
+    showToast(messages[error.code] || 'Não foi possível entrar com Google. Tente novamente.');
+  }
+
+  async function signInGoogle(){
+    if(!auth) return;
+    const button = document.getElementById('loginGoogleBtn');
+    button.disabled = true;
+    try{
+      await firebase.signInWithPopup(auth, googleProvider);
+    }catch(error){
+      showAuthError(error);
+    }finally{
+      button.disabled = false;
+    }
+  }
+
+  async function signOutUser(){
+    if(!auth) return;
+    const button = document.getElementById('signOutBtn');
+    button.disabled = true;
+    try{
+      await firebase.signOut(auth);
+    }catch(e){
+      showToast('Não foi possível sair. Tente novamente.');
+    }finally{
+      button.disabled = false;
+    }
+  }
+
+  function initializeFirebase(){
+    const button = document.getElementById('loginGoogleBtn');
+    const config = window.FIREBASE_CONFIG;
+    const fields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+    if(!config || fields.some(field => !config[field] || config[field] === 'COLE_AQUI')){
+      document.getElementById('loginMessage').textContent = 'O acesso ainda não foi configurado. Avise o responsável pelo app.';
+      showToast('Login indisponível: configuração do serviço incompleta.');
+      return;
+    }
+    if(window.location.protocol === 'file:'){
+      showToast('Abra o app pelo servidor local ou pelo site publicado para entrar.');
+      return;
+    }
+    try{
+      const app = firebase.initializeApp(config);
+      auth = firebase.getAuth(app);
+      db = firebase.initializeFirestore(app, {
+        localCache: firebase.persistentLocalCache({
+          tabManager: firebase.persistentMultipleTabManager(),
+        }),
+      });
+      googleProvider = new firebase.GoogleAuthProvider();
+      googleProvider.setCustomParameters({ hd: 'scaffoldeducation.com.br', prompt: 'select_account' });
+      firebase.onAuthStateChanged(auth, (user) => {
+        handleAuthStateChanged(user).catch(() => {
+          sessionVersion++;
+          showLogin();
+          showToast('Não foi possível carregar sua sessão. Recarregue a página.');
+        });
+      }, () => {
+        sessionVersion++;
+        showLogin();
+        showToast('Não foi possível verificar sua sessão. Recarregue a página.');
+      });
+      button.disabled = false;
+    }catch(e){
+      showToast('Não foi possível iniciar o login. Verifique a configuração do serviço.');
     }
   }
 
@@ -159,11 +328,12 @@
     note.className = 'note';
     note.placeholder = 'Observação (opcional)';
     note.value = entry.note || '';
+    note.addEventListener('input', ()=>{ editVersion++; });
     note.addEventListener('change', ()=>{
       const e = state.checkins[room.id] || {status:null, note:'', time:null};
       e.note = note.value;
       state.checkins[room.id] = e;
-      saveDay(state.date, state.checkins);
+      saveDay(state.date, room.id, e);
     });
     card.appendChild(note);
 
@@ -182,7 +352,7 @@
     }
     if(current.note === undefined) current.note = '';
     state.checkins[roomId] = current;
-    saveDay(state.date, state.checkins);
+    saveDay(state.date, roomId, current);
     renderRooms();
   }
 
@@ -370,13 +540,10 @@
   }
 
   // ---------- init ----------
-  async function init(){
+  function init(){
     document.getElementById('headerDate').textContent = formatHeaderDate(state.date);
     renderTabs();
-    state.checkins = await loadDay(state.date);
-    state.loading = false;
-    document.getElementById('headerSub').textContent = 'toque numa sala para registrar a verificação';
-    renderRooms();
+    showLogin();
 
     document.getElementById('openReportBtn').addEventListener('click', openReport);
     document.getElementById('closeReportBtn').addEventListener('click', closeReport);
@@ -398,6 +565,17 @@
     document.getElementById('webhookInput').addEventListener('keydown', (ev)=>{
       if(ev.key === 'Enter') saveWebhook();
     });
+    document.getElementById('loginGoogleBtn').addEventListener('click', signInGoogle);
+    document.getElementById('signOutBtn').addEventListener('click', signOutUser);
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible' && state.user && !state.loading){
+        // Confirma a observação em edição antes de reconstruir os cards.
+        const active = document.activeElement;
+        if(active && active.classList.contains('note')) active.blur();
+        refreshDay();
+      }
+    });
+    initializeFirebase();
   }
 
   init();

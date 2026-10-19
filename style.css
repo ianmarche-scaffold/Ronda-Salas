@@ -397,6 +397,25 @@
   .webhook-input::placeholder{color:var(--ink-dim);}
   .webhook-input:focus{border-color:var(--accent);}
 
+  /* ---------- Login e conta ---------- */
+  .login-overlay{z-index:40;}
+  .login-hint{
+    margin:0;
+    padding:0 16px 12px;
+    color:var(--ink-dim);
+    font-size:13px;
+    line-height:1.5;
+  }
+  .account-settings{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:8px;
+  }
+  .account-settings .webhook-hint{overflow-wrap:anywhere;}
+  #loginGoogleBtn:disabled{opacity:0.6;cursor:wait;}
+
   /* ---------- Toast ---------- */
   .toast{
     position:fixed;
@@ -412,7 +431,7 @@
     opacity:0;
     pointer-events:none;
     transition:opacity .2s ease, transform .2s ease;
-    z-index:30;
+    z-index:50;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 

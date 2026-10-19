@@ -15,6 +15,7 @@
 </head>
 <body>
 
+<div id="appContent" inert>
 <header class="board">
   <div class="board-title">
     <h1>Ronda de Salas</h1>
@@ -75,16 +76,18 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
 <!-- Discord Webhook Config Modal -->
 <div class="modal-overlay" id="webhookOverlay">
   <div class="modal-sheet">
     <div class="modal-head">
-      <h2>Configurar Discord</h2>
+      <h2>Configurações</h2>
       <button class="modal-close" id="closeWebhookBtn" aria-label="Fechar">&times;</button>
     </div>
     <div class="webhook-body">
+      <div class="account-settings">
+        <span class="webhook-hint" id="accountEmail"></span>
+        <button class="btn-secondary" id="signOutBtn">Sair</button>
+      </div>
       <p class="webhook-hint">Cole a URL do Webhook do Discord abaixo. Ela ficará salva <strong>apenas neste navegador</strong> (localStorage) e nunca será enviada a nenhum servidor.</p>
       <label for="webhookInput" class="webhook-label">Webhook URL</label>
       <input
@@ -102,7 +105,24 @@
     </div>
   </div>
 </div>
+</div>
 
+<div class="modal-overlay login-overlay open" id="loginOverlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h2 id="loginTitle">Entrar na Ronda de Salas</h2>
+    </div>
+    <p class="login-hint" id="loginMessage">Entre com sua conta @scaffoldeducation.com.br para continuar.</p>
+    <div class="modal-actions">
+      <button class="btn-copy" id="loginGoogleBtn" disabled>Entrar com Google</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="firebase-config.js"></script>
+<script src="vendor/firebase-bundle.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
